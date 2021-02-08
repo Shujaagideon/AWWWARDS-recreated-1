@@ -1,0 +1,867 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+	<title>three.js webgl - instancing - dynamic</title>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+	<link type="text/css" rel="stylesheet" href="main.css">
+</head>
+
+<body>
+
+	<script type="module">
+
+		import * as THREE from '../build/three.module.js';
+
+		import Stats from './jsm/libs/stats.module.js';
+		import { GUI } from './jsm/libs/dat.gui.module.js';
+
+		let camera, scene, renderer, stats;
+
+		let mesh;
+		const amount = parseInt(window.location.search.substr(1)) || 10;
+		const count = Math.pow(amount, 3);
+		const dummy = new THREE.Object3D();
+
+		init();
+		animate();
+
+		function init() {
+
+			camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 100);
+			camera.position.set(amount * 0.9, amount * 0.9, amount * 0.9);
+			camera.lookAt(0, 0, 0);
+
+			scene = new THREE.Scene();
+
+			const loader = new THREE.BufferGeometryLoader();
+			loader.load('models/json/suzanne_buffergeometry.json', function (geometry) {
+
+				geometry.computeVertexNormals();
+				geometry.scale(0.5, 0.5, 0.5);
+
+				const material = new THREE.MeshNormalMaterial();
+				// check overdraw
+				// let material = new THREE.MeshBasicMaterial( { color: 0xff0000, opacity: 0.1, transparent: true } );
+
+				mesh = new THREE.InstancedMesh(geometry, material, count);
+				mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage); // will be updated every frame
+				scene.add(mesh);
+
+				//
+
+				const gui = new GUI();
+				gui.add(mesh, 'count', 0, count);
+
+			});
+
+			//
+
+			renderer = new THREE.WebGLRenderer({ antialias: true });
+			renderer.setPixelRatio(window.devicePixelRatio);
+			renderer.setSize(window.innerWidth, window.innerHeight);
+			document.body.appendChild(renderer.domElement);
+
+			//
+
+			stats = new Stats();
+			document.body.appendChild(stats.dom);
+
+			//
+
+			window.addEventListener('resize', onWindowResize, false);
+
+		}
+
+		function onWindowResize() {
+
+			camera.aspect = window.innerWidth / window.innerHeight;
+			camera.updateProjectionMatrix();
+
+			renderer.setSize(window.innerWidth, window.innerHeight);
+
+		}
+
+		//
+
+		function animate() {
+
+			requestAnimationFrame(animate);
+
+			render();
+
+			stats.update();
+
+		}
+
+		function render() {
+
+			if (mesh) {
+
+				const time = Date.now() * 0.001;
+
+				mesh.rotation.x = Math.sin(time / 4);
+				mesh.rotation.y = Math.sin(time / 2);
+
+				let i = 0;
+				const offset = (amount - 1) / 2;
+
+				for (let x = 0; x < amount; x++) {
+
+					for (let y = 0; y < amount; y++) {
+
+						for (let z = 0; z < amount; z++) {
+
+							dummy.position.set(offset - x, offset - y, offset - z);
+							dummy.rotation.y = (Math.sin(x / 4 + time) + Math.sin(y / 4 + time) + Math.sin(z / 4 + time));
+							dummy.rotation.z = dummy.rotation.y * 2;
+
+							dummy.updateMatrix();
+
+							mesh.setMatrixAt(i++, dummy.matrix);
+
+						}
+
+					}
+
+				}
+
+				mesh.instanceMatrix.needsUpdate = true;
+
+			}
+
+			renderer.render(scene, camera);
+
+		}
+
+	</script>
+
+</body>
+
+</html>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+	<title>three.js webgl - instancing - performance</title>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+	<link type="text/css" rel="stylesheet" href="main.css">
+	<style>
+		#info {
+			background - color: rgba(0, 0, 0, 0.75);
+		}
+
+		.dg .folder .gui-stats {
+			height: auto;
+		}
+	</style>
+</head>
+
+<body>
+
+	<div id="info">
+
+		<a href="https://threejs.org" target="_blank" rel="noopener">three.js</a> webgl - instancing - performance
+
+	</div>
+
+	<div id="container"></div>
+
+	<script type="module">
+		import * as THREE from '../build/three.module.js';
+
+		import Stats from './jsm/libs/stats.module.js';
+		import { GUI } from './jsm/libs/dat.gui.module.js';
+
+		import { OrbitControls } from './jsm/controls/OrbitControls.js';
+		import { BufferGeometryUtils } from './jsm/utils/BufferGeometryUtils.js';
+
+		let container, stats, gui, guiStatsEl;
+		let camera, controls, scene, renderer, material;
+
+		// gui
+
+		const Method = {
+			INSTANCED: 'INSTANCED',
+			MERGED: 'MERGED',
+			NAIVE: 'NAIVE'
+		};
+
+		const api = {
+			method: Method.INSTANCED,
+			count: 1000
+		};
+
+		//
+
+		init();
+		initMesh();
+		animate();
+
+		//
+
+		function clean() {
+
+			const meshes = [];
+
+			scene.traverse(function (object) {
+
+				if (object.isMesh) meshes.push(object);
+
+			});
+
+			for (let i = 0; i < meshes.length; {
+
+				const mesh = meshes[i];
+				mesh.material.dispose();
+				mesh.geometry.dispose();
+
+				scene.remove(mesh);
+
+			}
+
+		}
+
+		const randomizeMatrix = function () {
+
+			const position = new THREE.Vector3();
+			const rotation = new THREE.Euler();
+			const quaternion = new THREE.Quaternion();
+			const scale = new THREE.Vector3();
+
+			return function (matrix) {
+
+				position.x = Math.random() * 40 - 20;
+				position.y = Math.random() * 40 - 20;
+				position.z = Math.random() * 40 - 20;
+
+				rotation.x = Math.random() * 2 * Math.PI;
+				rotation.y = Math.random() * 2 * Math.PI;
+				rotation.z = Math.random() * 2 * Math.PI;
+
+				quaternion.setFromEuler(rotation);
+
+				scale.x = scale.y = scale.z = Math.random() * 1;
+
+				matrix.compose(position, quaternion, scale);
+
+			};
+
+		}();
+
+		function initMesh() {
+
+			clean();
+
+			// make instances
+			new THREE.BufferGeometryLoader()
+				.setPath('models/json/')
+				.load('suzanne_buffergeometry.json', function (geometry) {
+
+					material = new THREE.MeshNormalMaterial();
+
+					geometry.computeVertexNormals();
+
+					console.time(api.method + ' (build)');
+
+					switch (api.method) {
+
+						case Method.INSTANCED:
+							makeInstanced(geometry);
+							break;
+
+						case Method.MERGED:
+							makeMerged(geometry);
+							break;
+
+						case Method.NAIVE:
+							makeNaive(geometry);
+							break;
+
+					}
+
+					console.timeEnd(api.method + ' (build)');
+
+				});
+
+		}
+
+		function makeInstanced(geometry) {
+
+			const matrix = new THREE.Matrix4();
+			const mesh = new THREE.InstancedMesh(geometry, material, api.count);
+
+			for (let i = 0; i < api.count; {
+
+				randomizeMatrix(matrix);
+				mesh.setMatrixAt(i, matrix);
+
+			}
+
+			scene.add(mesh);
+
+			//
+
+			const geometryByteLength = getGeometryByteLength(geometry);
+
+			guiStatsEl.innerHTML = [
+
+				'<i>GPU draw calls</i>: 1',
+				'<i>GPU memory</i>: ' + formatBytes(api.count * 16 + geometryByteLength, 2)
+
+			].join('<br />');
+
+		}
+
+		function makeMerged(geometry) {
+
+			const geometries = [];
+			const matrix = new THREE.Matrix4();
+
+			for (let i = 0; i < api.count; {
+				randomizeMatrix(matrix);
+
+				const instanceGeometry = geometry.clone();
+				instanceGeometry.applyMatrix4(matrix);
+
+				geometries.push(instanceGeometry);
+
+			}
+
+			const mergedGeometry = BufferGeometryUtils.mergeBufferGeometries(geometries);
+
+			scene.add(new THREE.Mesh(mergedGeometry, material));
+
+			//
+
+			guiStatsEl.innerHTML = [
+
+				'<i>GPU draw calls</i>: 1',
+				'<i>GPU memory</i>: ' + formatBytes(getGeometryByteLength(mergedGeometry), 2)
+
+			].join('<br />');
+
+		}
+
+		function makeNaive(geometry) {
+
+			const matrix = new THREE.Matrix4();
+
+			for (let i = 0; i < api.count; {
+
+				randomizeMatrix(matrix);
+
+				const mesh = new THREE.Mesh(geometry, material);
+				mesh.applyMatrix4(matrix);
+
+				scene.add(mesh);
+
+			}
+
+			//
+
+			const geometryByteLength = getGeometryByteLength(geometry);
+
+			guiStatsEl.innerHTML = [
+
+				'<i>GPU draw calls</i>: ' + api.count,
+				'<i>GPU memory</i>: ' + formatBytes(api.count * 16 + geometryByteLength, 2)
+
+			].join('<br />');
+
+		}
+
+		function init() {
+
+			const width = window.innerWidth;
+			const height = window.innerHeight;
+
+			// camera
+
+			camera = new THREE.PerspectiveCamera(70, width / height, 1, 100);
+			camera.position.z = 30;
+
+			// renderer
+
+			renderer = new THREE.WebGLRenderer({ antialias: true });
+			renderer.setPixelRatio(window.devicePixelRatio);
+			renderer.setSize(width, height);
+			renderer.outputEncoding = THREE.sRGBEncoding;
+
+			container = document.getElementById('container');
+			container.appendChild(renderer.domElement);
+
+			// scene
+
+			scene = new THREE.Scene();
+			scene.background = new THREE.Color(0xffffff);
+
+			// controls
+
+			controls = new OrbitControls(camera, renderer.domElement);
+			controls.autoRotate = true;
+
+			// stats
+
+			stats = new Stats();
+			container.appendChild(stats.dom);
+
+			// gui
+
+			gui = new GUI();
+			gui.add(api, 'method', Method).onChange(initMesh);
+			gui.add(api, 'count', 1, 10000).step(1).onChange(initMesh);
+
+			const perfFolder = gui.addFolder('Performance');
+
+			guiStatsEl = document.createElement('li');
+			guiStatsEl.classList.add('gui-stats');
+
+			perfFolder.__ul.appendChild(guiStatsEl);
+			perfFolder.open();
+
+			// listeners
+
+			window.addEventListener('resize', onWindowResize, false);
+
+			Object.assign(window, { scene });
+
+		}
+
+		//
+
+		function onWindowResize() {
+
+			const width = window.innerWidth;
+			const height = window.innerHeight;
+
+			camera.aspect = width / height;
+			camera.updateProjectionMatrix();
+
+			renderer.setSize(width, height);
+
+		}
+
+		function animate() {
+
+			requestAnimationFrame(animate);
+
+			controls.update();
+			stats.update();
+
+			render();
+
+		}
+
+		function render() {
+
+			renderer.render(scene, camera);
+
+		}
+
+		//
+
+		function getGeometryByteLength(geometry) {
+
+			let total = 0;
+
+			if (geometry.index) total += geometry.index.array.byteLength;
+
+			for (const name in geometry.attributes) {
+
+				total += geometry.attributes[name].array.byteLength;
+
+			}
+
+			return total;
+
+		}
+
+		// Source: https://stackoverflow.com/a/18650828/1314762
+		function formatBytes(bytes, decimals) {
+
+			if (bytes === 0) return '0 bytes';
+
+			const k = 1024;
+			const dm = decimals < 0 ? 0 : decimals;
+			const sizes = ['bytes', 'KB', 'MB'];
+
+			const i = Math.floor(Math.log(bytes) / Math.log(k));
+
+			return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
+
+		}
+
+	</script>
+
+</body>
+
+</html>
+
+
+
+
+
+
+
+
+
+
+
+{/* ------------ perfomance --------------- */}
+
+
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+	<title>three.js webgl - shadow map</title>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+	<link type="text/css" rel="stylesheet" href="main.css">
+</head>
+
+<body>
+
+	<div id="info">
+		<a href="https://threejs.org" target="_blank" rel="noopener">three.js</a> - shadowmap - models by <a
+			href="https://mirada.com/" target="_blank" rel="noopener">mirada</a> from <a href="http://www.ro.me"
+			target="_blank" rel="noopener">rome</a><br />
+		move camera with WASD / RF + mouse
+	</div>
+
+	<script type="module">
+
+		import * as THREE from '../build/three.module.js';
+
+		import Stats from './jsm/libs/stats.module.js';
+
+		import { FirstPersonControls } from './jsm/controls/FirstPersonControls.js';
+		import { GLTFLoader } from './jsm/loaders/GLTFLoader.js';
+
+		const SHADOW_MAP_WIDTH = 2048, SHADOW_MAP_HEIGHT = 1024;
+
+		let SCREEN_WIDTH = window.innerWidth;
+		let SCREEN_HEIGHT = window.innerHeight;
+		const FLOOR = - 250;
+
+		const ANIMATION_GROUPS = 25;
+
+		let camera, controls, scene, renderer;
+		let stats;
+
+		const NEAR = 5, FAR = 3000;
+
+		let morph, mixer;
+
+		const morphs = [], animGroups = [];
+
+		const clock = new THREE.Clock();
+
+		init();
+		animate();
+
+
+		function init() {
+
+			const container = document.createElement('div');
+			document.body.appendChild(container);
+
+			// CAMERA
+
+			camera = new THREE.PerspectiveCamera(23, SCREEN_WIDTH / SCREEN_HEIGHT, NEAR, FAR);
+			camera.position.set(700, 50, 1900);
+
+			// SCENE
+
+			scene = new THREE.Scene();
+			scene.background = new THREE.Color(0x59472b);
+			scene.fog = new THREE.Fog(0x59472b, 1000, FAR);
+
+			// LIGHTS
+
+			const ambient = new THREE.AmbientLight(0x444444);
+			scene.add(ambient);
+
+			const light = new THREE.SpotLight(0xffffff, 1, 0, Math.PI / 5, 0.3);
+			light.position.set(0, 1500, 1000);
+			light.target.position.set(0, 0, 0);
+
+			light.castShadow = true;
+			light.shadow.camera.near = 1200;
+			light.shadow.camera.far = 2500;
+			light.shadow.bias = 0.0001;
+
+			light.shadow.mapSize.width = SHADOW_MAP_WIDTH;
+			light.shadow.mapSize.height = SHADOW_MAP_HEIGHT;
+
+			scene.add(light);
+
+			createScene();
+
+			// RENDERER
+
+			renderer = new THREE.WebGLRenderer();
+			renderer.setPixelRatio(window.devicePixelRatio);
+			renderer.setSize(SCREEN_WIDTH, SCREEN_HEIGHT);
+			container.appendChild(renderer.domElement);
+
+			renderer.outputEncoding = THREE.sRGBEncoding;
+			renderer.autoClear = false;
+
+			//
+
+			renderer.shadowMap.enabled = true;
+			renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
+			// CONTROLS
+
+			controls = new FirstPersonControls(camera, renderer.domElement);
+
+			controls.lookSpeed = 0.0125;
+			controls.movementSpeed = 500;
+			controls.noFly = false;
+			controls.lookVertical = true;
+
+			controls.lookAt(scene.position);
+
+			// STATS
+
+			stats = new Stats();
+			container.appendChild(stats.dom);
+
+			//
+
+			window.addEventListener('resize', onWindowResize, false);
+
+		}
+
+		function onWindowResize() {
+
+			SCREEN_WIDTH = window.innerWidth;
+			SCREEN_HEIGHT = window.innerHeight;
+
+			camera.aspect = SCREEN_WIDTH / SCREEN_HEIGHT;
+			camera.updateProjectionMatrix();
+
+			renderer.setSize(SCREEN_WIDTH, SCREEN_HEIGHT);
+
+			controls.handleResize();
+
+		}
+
+		function createScene() {
+
+			// GROUND
+
+			const geometry = new THREE.PlaneBufferGeometry(100, 100);
+			const planeMaterial = new THREE.MeshPhongMaterial({ color: 0xffb851 });
+
+			const ground = new THREE.Mesh(geometry, planeMaterial);
+
+			ground.position.set(0, FLOOR, 0);
+			ground.rotation.x = - Math.PI / 2;
+			ground.scale.set(100, 100, 100);
+
+			ground.castShadow = false;
+			ground.receiveShadow = true;
+
+			scene.add(ground);
+
+			// TEXT
+
+			const loader = new THREE.FontLoader();
+			loader.load('fonts/helvetiker_bold.typeface.json', function (font) {
+
+				const textGeo = new THREE.TextBufferGeometry("THREE.JS", {
+
+					font: font,
+
+					size: 200,
+					height: 50,
+					curveSegments: 12,
+
+					bevelThickness: 2,
+					bevelSize: 5,
+					bevelEnabled: true
+
+				});
+
+				textGeo.computeBoundingBox();
+				const centerOffset = - 0.5 * (textGeo.boundingBox.max.x - textGeo.boundingBox.min.x);
+
+				const textMaterial = new THREE.MeshPhongMaterial({ color: 0xff0000, specular: 0xffffff });
+
+				const mesh = new THREE.Mesh(textGeo, textMaterial);
+				mesh.position.x = centerOffset;
+				mesh.position.y = FLOOR + 67;
+
+				mesh.castShadow = true;
+				mesh.receiveShadow = true;
+
+				scene.add(mesh);
+
+			});
+
+			// CUBES
+
+			const cubes1 = new THREE.Mesh(new THREE.BoxBufferGeometry(1500, 220, 150), planeMaterial);
+
+			cubes1.position.y = FLOOR - 50;
+			cubes1.position.z = 20;
+
+			cubes1.castShadow = true;
+			cubes1.receiveShadow = true;
+
+			scene.add(cubes1);
+
+			const cubes2 = new THREE.Mesh(new THREE.BoxBufferGeometry(1600, 170, 250), planeMaterial);
+
+			cubes2.position.y = FLOOR - 50;
+			cubes2.position.z = 20;
+
+			cubes2.castShadow = true;
+			cubes2.receiveShadow = true;
+
+			scene.add(cubes2);
+
+			mixer = new THREE.AnimationMixer(scene);
+
+			for (let i = 0; i !== ANIMATION_GROUPS; ++i) {
+
+				const group = new THREE.AnimationObjectGroup();
+				animGroups.push(group);
+
+			}
+
+			// MORPHS
+
+			function addMorph(mesh, clip, speed, duration, x, y, z, fudgeColor, massOptimization) {
+
+				mesh = mesh.clone();
+				mesh.material = mesh.material.clone();
+
+				if (fudgeColor) {
+
+					mesh.material.color.offsetHSL(0, Math.random() * 0.5 - 0.25, Math.random() * 0.5 - 0.25);
+
+				}
+
+				mesh.speed = speed;
+
+				if (massOptimization) {
+
+					const index = Math.floor(Math.random() * ANIMATION_GROUPS),
+						animGroup = animGroups[index];
+
+					animGroup.add(mesh);
+
+					if (!mixer.existingAction(clip, animGroup)) {
+
+						const randomness = 0.6 * Math.random() - 0.3;
+						const phase = (index + randomness) / ANIMATION_GROUPS;
+
+						mixer.clipAction(clip, animGroup).
+							setDuration(duration).
+							startAt(- duration * phase).
+							play();
+
+					}
+
+				} else {
+
+					mixer.clipAction(clip, mesh).
+						setDuration(duration).
+						startAt(- duration * Math.random()).
+						play();
+
+				}
+
+				mesh.position.set(x, y, z);
+				mesh.rotation.y = Math.PI / 2;
+
+				mesh.castShadow = true;
+				mesh.receiveShadow = true;
+
+				scene.add(mesh);
+
+				morphs.push(mesh);
+
+			}
+
+			const gltfLoader = new GLTFLoader();
+			gltfLoader.load("models/gltf/Horse.glb", function (gltf) {
+
+				const mesh = gltf.scene.children[0];
+				const clip = gltf.animations[0];
+
+				for (let i = - 600; i < 601; i += 2) {
+
+					addMorph(mesh, clip, 550, 1, 100 - Math.random() * 3000, FLOOR, i, true, true);
+
+				}
+
+			});
+
+		}
+
+		//
+
+		function animate() {
+
+			requestAnimationFrame(animate);
+
+			stats.begin();
+			render();
+			stats.end();
+
+		}
+
+		function render() {
+
+			const delta = clock.getDelta();
+
+			if (mixer) mixer.update(delta);
+
+			for (let i = 0; i < morphs.length; {
+
+				morph = morphs[i];
+
+				morph.position.x += morph.speed * delta;
+
+				if(morph.position.x > 2000 ) {
+
+				morph.position.x = - 1000 - Math.random() * 500;
+
+			}
+
+		}
+
+		controls.update(delta);
+
+		renderer.clear();
+		renderer.render(scene, camera);
+
+			}
+
+	</script>
+
+</body>
+
+</html>
