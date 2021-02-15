@@ -2,16 +2,21 @@ import * as THREE from 'three'
 import { math } from '../../utils/math';
 import { BufferGeometryUtils } from 'three';
 import { SkeletonUtils } from 'three/examples/jsm/utils/SkeletonUtils.js';
+import { FBXLoader } from 'three/examples/jsm/loaders/FBXLoader';
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
+
 
 
 export const key_press = (() => {
     class _KeyPress {
-        constructor(props, miss) {
+        constructor(props, miss, scene,loader) {
             this.position = new THREE.Vector3(0, 0, 0);
             this.player = new THREE.Box3();
             this.velocity = 0;
             this.props = props;
-            this.direction;
+            this.loader = loader;
+            this.scene = scene;
+            this.carMesh = new THREE.Object3D();
             this.miss = miss;
             // this.props.position.xyz = this.position;
             this.gameOver = false;
@@ -21,8 +26,16 @@ export const key_press = (() => {
                 right: false,
                 back: false,
             };
-
+            this.Player();
             this._Init();
+        }
+        Player(){
+            this.loader.load('./resources/vehicles/gltf/vehicle3.gltf', gltf =>{
+                this.carMesh.add(gltf.scene); 
+                this.scene.add(this.carMesh);
+                this.carMesh.scale.setScalar(0.0035);
+                this.carMesh.rotation.y = Math.PI/2;
+             });
         }
 
         _Init = () => {
@@ -115,7 +128,7 @@ export const key_press = (() => {
         _Collisions() {
             const colliders = this.miss.GetColliders();
 
-            this.player.setFromObject(this.props);
+            this.player.setFromObject(this.carMesh);
 
             for (let c of colliders) {
                 const cur = c.collider;
@@ -129,20 +142,21 @@ export const key_press = (() => {
         _CharacterMovement = (time) => {
 
             if (this.position.x == 0.0) {
-                this.velocity = 60;
+                this.velocity = 50;
+                this.velocity*= 0.768;
             }
-            const acceleration = 0.05 * time;
-            if (this.events.left && this.position.x <= 2) {
+            const acceleration = 0.005 * time;
+            if (this.events.left && this.position.x <= 2.1) {
                 this.position.x += time * (this.velocity + acceleration * 0.005);
                 // this.position.x += -1;
                 // this.position.x = Math.max(this.position.x, -1.5)
-                this.props.position.copy(this.position);
+                this.carMesh.position.copy(this.position);
             }
-            if (this.events.right && this.position.x >= -2) {
+            if (this.events.right && this.position.x >= -2.1) {
                 this.position.x -= time * (this.velocity + acceleration * 0.005);
                 // this.position.x += -1;
                 // this.position.x = Math.max(this.position.x, 1.5)
-                this.props.position.copy(this.position);
+                this.carMesh.position.copy(this.position);
             }
             this._Collisions();
         }
@@ -161,46 +175,30 @@ export const key_press = (() => {
         }
 
         LoadModel_() {
-            let objNum = math.rand_int(3, 6)
-            this.loader.setPath('./resources/vehicles/gltf/');
-            this.loader.load(`vehicle${objNum}.gltf`, (gltf) => {
-                this.mesh = SkeletonUtils.clone(gltf.scene);
-                // console.log(this.mesh)
+            const vehicles = [
+                'Cop.fbx',
+                'NormalCar1.fbx',
+                'NormalCar2.fbx',
+                'SportsCar.fbx',
+                'SportsCar2.fbx',
+                'SUV.fbx',
+                'Taxi.fbx',
+                ]
+            const loader = new FBXLoader();
+            loader.setPath('./resources/CarPack/FBX/');
+            loader.load(vehicles[math.rand_int(0, vehicles.length - 1)], (fbx) => {
+                this.mesh = SkeletonUtils.clone(fbx);
+                    this.mesh.scale.setScalar(0.0045);
+                    this.mesh.rotation.x = - Math.PI / 2;
                 const root = new THREE.Object3D();
                 root.add(this.mesh);
                 this.params_.add(root);
-                switch (objNum) {
-                    case 3:
-                        this.mesh.scale.setScalar(0.005);
-                        this.mesh.rotation.y = - Math.PI / 2;
-                        break;
-                    case 6:
-                        this.mesh.scale.setScalar(0.01);
-                        this.mesh.rotation.y = Math.PI / 2;
-                        break;
-                    case 5:
-                        this.mesh.scale.setScalar(0.8);
-                        this.mesh.rotation.y = Math.PI;
-                        break;
-
-                    default:
-                        this.mesh.scale.setScalar(0.005);
-                        this.mesh.rotation.y = - Math.PI / 2;
-                        break;
-                }
+               
                 this.mesh.traverse(c => {
-                    if (c.geometry) {
-                        THREE.BufferGeometry.prototype.copy.call(this.newGeom, c.geometry);
-                        this.spawnGeo.push(this.newGeom);
-                    }
-                    c.geometry = BufferGeometryUtils.mergeBufferGeometries(
-                        this.spawnGeo, false);
                     c.castShadow = true;
                     c.receiveShadow = true;
                 });
             });
-            // this.mesh.scale.setScalar(0.01);
-
         }
 
         UpdateCollider_() {
@@ -212,8 +210,6 @@ export const key_press = (() => {
                 return;
             }
             this.mesh.position.copy(this.position);
-            // this.mesh.quaternion.copy(this.quaternion);
-            // this.mesh.scale.setScalar(this.scale);
             this.UpdateCollider_();
         }
     }

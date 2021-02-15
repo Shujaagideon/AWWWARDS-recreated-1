@@ -1,20 +1,24 @@
 import * as THREE from 'three'
-import { BufferGeometryUtils } from 'three';
+import { BufferGeometryUtils, SceneUtils } from 'three';
 import { key_press } from "./keyPress";
 import { math } from '../../utils/math'
 import { SkeletonUtils } from 'three/examples/jsm/utils/SkeletonUtils';
+import { FBXLoader } from 'three/examples/jsm/loaders/FBXLoader';
 
 export const sceneObj = (() => {
     const START_POS = 100;
     const SEPARATION_DISTANCE = 20;
 
     class _MissThem {
-        constructor(props,loader) {
+        constructor(props, loader, accel) {
             this.objects_ = [];
             this.unused_ = [];
             this.speed_ = 20;
             this.params_ = props;
+            this.stage = accel;
+            this.acceleration = accel.config.speed;
             this.score_ = 0.0;
+            this.score = 250;
             this.scoreText_ = '00000';
             this.separationDistance_ = SEPARATION_DISTANCE;
             this.loader = loader;
@@ -36,7 +40,7 @@ export const sceneObj = (() => {
                 obj = this.unused_.pop();
                 obj.mesh.visible = true;
             } else {
-                obj = new key_press.WorldObject(this.params_,this.loader);
+                obj = new key_press.WorldObject(this.params_, this.loader);
             }
 
 
@@ -77,17 +81,22 @@ export const sceneObj = (() => {
 
             const scoreText = Math.round(this.score_).toLocaleString(
                 'en-US', { minimumIntegerDigits: 5, useGrouping: false });
+                this.stage.config.highScore = this.score_;
 
             if (scoreText == this.scoreText_) {
                 return;
             }
-
+            
             document.getElementById('score-text').innerText = scoreText;
+            if(this.score_ > this.score){
+                document.getElementById('cash-text').innerHTML = this.score/25;
+                this.score += 250;
+            }
         }
         UpdateColliders_(timeElapsed) {
             const invisible = [];
             const visible = [];
-            this.speed_ += 0.008;
+            this.speed_ += this.acceleration;
 
             for (let obj of this.objects_) {
                 obj.position.z -= timeElapsed * this.speed_;
@@ -118,7 +127,6 @@ export const sceneObj = (() => {
             this.unused_ = [];
             this.speed_ = 20;
             this.loader = this.params_.loader;
-            this.cloudGeo = [];
 
             this.LoadModel_();
         }
@@ -129,10 +137,10 @@ export const sceneObj = (() => {
                 this.mesh_ = glb.scene;
                 this.params_.scene.add(this.mesh_);
 
-                this.position_.x = math.rand_range(-800, 800);
-                this.position_.y = math.rand_range(80, 100);
-                this.position_.z = math.rand_range(0, 1000);
-                this.scale_ = math.rand_range(10, 20);
+                this.position_.x = math.rand_range(-900, 900);
+                this.position_.y = math.rand_range(40, 60);
+                this.position_.z = math.rand_range(60, 800);
+                this.scale_ = math.rand_range(6, 15);
 
                 const q = new THREE.Quaternion().setFromAxisAngle(
                     new THREE.Vector3(0, 1, 0), math.rand_range(0, 360));
@@ -141,8 +149,6 @@ export const sceneObj = (() => {
                 this.mesh_.traverse(c => {
                     if (c.geometry) {
                         c.geometry.computeBoundingBox();
-                        this.cloudGeo.push(c.geometry);
-
                     }
 
                     let materials = c.material;
@@ -156,20 +162,23 @@ export const sceneObj = (() => {
                             m.emissive = new THREE.Color(0xC0C0C0);
                         }
                     }
-                    c.geometry = BufferGeometryUtils.mergeBufferGeometries(
-                        this.cloudGeo, false);
                     c.castShadow = true;
                     c.receiveShadow = true;
                 });
             });
             this.loader.setPath('./resources/vehicles/gltf/');
-            this.loader.load('road1.gltf',(gltf)=>{
+            this.loader.load('road1.gltf', (gltf) => {
                 this.mesh2 = gltf.scene;
                 this.params_.scene.add(this.mesh2);
-                this.mesh2.position.copy(new THREE.Vector3(0,-1,0));
-                this.mesh2.rotation.y = -Math.PI/2;
+                this.mesh2.position.copy(new THREE.Vector3(0, -0.2, 0));
+                this.mesh2.rotation.y = -Math.PI / 2;
                 this.mesh2.scale.setScalar(0.05);
-                this.mesh2.scale.x = 5;
+                this.mesh2.scale.x = 20;
+
+                this.mesh2.traverse(r => {
+                    r.receiveShadow = true;
+                    // r.castShadow = true;
+                })
             })
         }
         Update(timeElapsed) {
@@ -178,8 +187,8 @@ export const sceneObj = (() => {
             }
 
             this.position_.x -= timeElapsed * 10;
-            if (this.position_.x < -100) {
-                this.position_.x = math.rand_range(2000, 3000);
+            if (this.position_.x < -900) {
+                this.position_.x = math.rand_range(-700, 900);
             }
 
             this.mesh_.position.copy(this.position_);
@@ -192,9 +201,11 @@ export const sceneObj = (() => {
             this.params_ = params;
             this.loader = this.params_.loader;
             this.position_ = new THREE.Vector3();
+            this.position_2 = new THREE.Vector3();
             this.quaternion_ = new THREE.Quaternion();
             this.scale_ = 0.5;
-            this.mesh_ = null;
+            this.mesh_ = new THREE.Object3D();
+            this.mesh2 = new THREE.Object3D();
             this.newMesh = null;
             this.newGeom = new THREE.InstancedBufferGeometry();
             this.tempObj = new THREE.Object3D();
@@ -203,86 +214,110 @@ export const sceneObj = (() => {
         }
 
         LoadModel_() {
-            const assets = [
-                ['SmallPalmTree.glb', 'PalmTree.png', 3],
-                ['BigPalmTree.glb', 'PalmTree.png', 5],
-                ['Skull.glb', 'Ground.png', 1],
-                ['Scorpion.glb', 'Scorpion.png', 1],
-                ['Pyramid.glb', 'Ground.png', 40],
-                ['Monument.glb', 'Ground.png', 10],
-                ['Cactus1.glb', 'Ground.png', 5],
-                ['Cactus2.glb', 'Ground.png', 5],
-                ['Cactus3.glb', 'Ground.png', 5],
-                ['scene.gltf', 'Ground.png', 0.3],
-            ];
-            const [asset, textureName, scale] = assets[math.rand_int(0, assets.length - 1)];
+            const assets = this.params_.stage.assets;
+            const [asset, scale] = assets[math.rand_int(0, assets.length - 1)];
 
-            const texLoader = new THREE.TextureLoader();
-            const texture = texLoader.load('./resources/DesertPack/Blend/Textures/' + textureName);
-            texture.encoding = THREE.sRGBEncoding;
+            const loader = new FBXLoader();
+            loader.setPath(`./resources/naturePack/FBX/`);
+            loader.load(asset, (fbx) => {
 
-            this.loader.setPath('./resources/DesertPack/GLTF/');
-            this.loader.load(asset, (glb) => {
-                this.mesh_ = SkeletonUtils.clone(glb.scene);
-                
-                this.position_.x = -100;
-                this.position_.z = math.rand_range(1000, 0);
+                this.mesh_.add(SkeletonUtils.clone(fbx));
+                this.mesh2.add(SkeletonUtils.clone(fbx));
+                this.params_.scene.add(this.mesh_);
+                this.params_.scene.add(this.mesh2);
+
+                this.position_.x = math.rand_range(this.params_.stage.config.bgRange[0], this.params_.stage.config.bgRange[1]) // && math.rand_range(-30, -800);
+                this.position_2.x = math.rand_range(- this.params_.stage.config.bgRange[0], - this.params_.stage.config.bgRange[1]);
+                this.position_.z = math.rand_range(0, 800);
+                this.position_2.z = math.rand_range(0, 800);
                 this.scale_ = scale;
 
-                
-                // const q = new THREE.Quaternion().setFromAxisAngle(
-                //     new THREE.Vector3(0, 1, 0), math.rand_range(0, 360));
-                //     this.quaternion_.copy(q);
-                    
-                    this.mesh_.traverse(c => {
-                        let materials = c.material;
-                        if(c.geometry){
-                            THREE.BufferGeometry.prototype.copy.call(this.newGeom, c.geometry);
-                        }
-                        if (!(c.material instanceof Array)) {
-                            materials = [c.material];
-                        }
-                        
-                        for (let m of materials) {
-                            if (m) {
-                                if (texture) {
-                                    m.map = texture;
-                                }
-                                m.specular = new THREE.Color(0x000000);
-                            }
-                        }
-                        c.castShadow = true;
-                        c.receiveShadow = true;
-                        this.newMesh = new THREE.InstancedMesh(this.newGeom, c.material, 100);
-                    });
+                const q = new THREE.Quaternion().setFromAxisAngle(
+                    new THREE.Vector3(0, 1, 0), math.rand_range(0, 360));
+                this.quaternion_.copy(q);
+
+                fbx.traverse(c => {
+                    c.castShadow = true;
+                    c.receiveShadow = true;
+                    if (c.material) {
+                        console.log('yhjknklm')
+                        c.material.fog = false;
+                    }
+                });
             });
+            if (this.params_.stage.name === 'winter') {
+                let loader = new THREE.TextureLoader();
+
+                let texture = loader.load(this.params_.stage.textures[math.rand_int(0, this.params_.stage.textures.length - 1)])
+                // this.createSystem(texture);
+            }
         }
- 
+        createSystem(texture) {
+            this.ParticleGeom = new THREE.Geometry();
+            this.ParticleMaterial = new THREE.PointsMaterial({
+                size: 4,
+                transparent: false,
+                opacity: 1,
+                map: texture,
+                blending: THREE.NormalBlending,
+                depthWrite: false,
+                sizeAttenuation: true,
+                color: 0x00ff00
+            });
+            this.ParticleRange = 800;
+            for (let i = 0; i < 100; i++) {
+                let particle = new THREE.Vector3(
+                    Math.random() * this.ParticleRange - this.ParticleRange / 2,
+                    Math.random() * this.ParticleRange * 1.5,
+                    Math.random() * this.ParticleRange - this.ParticleRange / 2);
+                particle.velocityY = 0.1 + Math.random() / 5;
+                particle.velocityX = (Math.random() - 0.5) / 3;
+                particle.velocityZ = (Math.random() - 0.5) / 3;
+                this.ParticleGeom.vertices.push(particle);
+                // new BufferGeometryUtils.mergeBufferGeometries(this.ParticleGeom, this.ParticleGeom);
+            }
+            this.ParticleSystem = new THREE.Points(this.ParticleGeom, this.ParticleMaterial);
+            this.ParticleSystem.sortParticles = true;
+            this.params_.scene.add(this.ParticleSystem)}
         Update(timeElapsed) {
             if (!this.mesh_) {
                 return;
             }
-
-            this.position_.z -= timeElapsed * 10;
-            if (this.position_.z < -100) {
-                this.position_.z = math.rand_range(2000, 3000);
+            let bgSpeed = 10
+            bgSpeed += timeElapsed;
+            this.position_.z -= timeElapsed * bgSpeed;
+            this.position_2.z -= timeElapsed * bgSpeed;
+            if (this.position_.z < -10) {
+                this.position_.z = math.rand_range(500, 800);
             }
+            if (this.position_2.z < 0) {
+                this.position_2.z = math.rand_range(500, 800);
+            }
+            this.mesh_.position.copy(this.position_);
+            this.mesh2.position.copy(this.position_2);
+            this.mesh_.quaternion.copy(this.quaternion_);
+            this.mesh_.scale.setScalar(this.scale_);
+            this.mesh2.scale.setScalar(this.scale_);
 
-            this.newMesh.position.copy(this.position_);
-            this.newMesh.quaternion.copy(this.quaternion_);
-            this.newMesh.scale.setScalar(this.scale_);
-            let i = 0;
+            // particles
+            this.params_.scene.children.forEach(child => {
+                if (child instanceof THREE.Points) {
+                    let vertices = child.geometry.vertices;
+                    vertices.forEach(v => {
+                        v.y = v.y - (v.velocityY);
+                        v.x = v.x - (v.velocityX);
+                        v.z = v.z - (v.velocityZ);
+                        if (v.y <= 0) v.y = 60;
+                        if (v.x <= -20 || v.x >= 20)
+                            v.velocityX = v.velocityX * -1;
+                        if (v.z <= 20 || v.z >= -20)
+                            v.velocityZ = v.velocityZ * -1;
+                    });
 
-            for (let x = 0; x < 1; x++) {
-                for (let z = 0; z < 10; z++) {
-                    this.id = i++;
-                    this.tempObj.position.set( 5 - x, 0, 5 - z);
-                    this.tempObj.updateMatrix();
-                    this.newMesh.setMatrixAt(this.id, this.tempObj.matrix);
+                    child.position.set(math.rand_range(400, - 400), math.rand_range(0, 300), math.rand_range(10, 800))
+                    child.geometry.verticesNeedUpdate = true;
                 }
-            }
-            this.newMesh.instanceMatrix.needsUpdate = true;
-            this.params_.scene.add(this.newMesh);
+            });
         }
     };
     class Background {

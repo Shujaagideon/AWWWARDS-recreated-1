@@ -8,10 +8,11 @@ class UI {
         this.links = [];
         this.ext = [];
         this.stages = [];
+        this.stageSpecs = [];
         this.vehicles = [];
         this.menuOpen = false;
         this.isFullscreen = false;
-        this.chosenStage = 'desert';
+        this.chosenStage = data.stage.desert;
         this.chosenVehicle = 'custom';
         this.data = data;
         this._Init();
@@ -58,12 +59,15 @@ class UI {
                 this.isFullscreen = false;
             }
         });
+        
     }
     _DOMElem() {
         this.hamburger = document.querySelector('.hamburger-menu')
         this.fullscreen = document.querySelector('.fullscreen')
         this.links = [...document.querySelectorAll('.choice-specific')];
         this.ext = [...document.querySelectorAll('.ext')];
+        this.progressbarElem = document.querySelector('#progressbar');
+        this.loadingElem = document.querySelector('#loading');
     }
     _FetchHtml(link) {
         fetch(`${this.url}/${link}.html`).then((res) => {
@@ -74,6 +78,7 @@ class UI {
             let cont = content.querySelector('.hapo');
             this.stages = [...content.querySelectorAll('.stage-image')];
             this.vehicles = [...content.querySelectorAll('.vehicle-specific')];
+            this.stageSpecs = content.querySelectorAll('.specs p');
             this.PostFetch();
 
             gsap.to('.hapo', {
@@ -114,11 +119,18 @@ class UI {
                 currentClick.children[0].src = stageImg;
             });
         })
+        // this.stageSpecs[0].innerHTML = data.stage.city.config.highScore || 0;
+        // this.stageSpecs[1].innerHTML = data.stage.city.config.highScore || 0;
+        // this.stageSpecs[2].innerHTML = data.stage.winter.config.highScore || 0;
+        // this.stageSpecs[3].innerHTML = data.stage.winter.config.highScore || 0;
+        // this.stageSpecs[4].innerHTML = data.stage.desert.config.highScore || 0;
+        // this.stageSpecs[5].innerHTML = data.stage.desert.config.highScore || 0;
+        // console.log(data.stage.desert.config.highScore)
     }
     StartGame() {
         document.getElementById('play').onclick = () => {
             document.getElementById('game-ui').style.display = 'none';
-            new ThreeTemplate(this.chosenStage, this.chosenVehicle, true);
+            new ThreeTemplate(this.chosenStage, this.chosenVehicle, true, this.progressbarElem, this.loadingElem);
         };
 
     }

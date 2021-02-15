@@ -18,6 +18,30 @@ body {
   left: 0;
   font-family: "Press Start 2P", cursive;
 }
+
+.points-ui{
+  height: 10%;
+  width: 15%;
+  margin: 10px;
+  background-color: rgba(117, 86, 46, 0.349);
+  border-top-right-radius: 20px;
+}
+.score-layout{
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-around;
+  align-items: center;
+}
+.score-layout div{
+  color: wheat;
+  width: 100%;
+  height: 40%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding-left: 8px;
+}
 /* game over */
 .game-over {
   height: 100vh;
@@ -373,7 +397,7 @@ background: linear-gradient(
   box-shadow: 20px 40px 20px rgba(0, 0, 0, 0.3);
   border-radius: 10px;
   transform-style: preserve-3d;
-  transition: 0.4s cubic-bezier(0.6, -0.28, 0.735, 0.045);
+  transition: 0.4s cubic-bezier(0.165, 0.84, 0.44, 1);
 }
 .glass .item-desc .stage .stage-specific .stage-image img {
   transform-style: preserve-3d;
@@ -496,33 +520,39 @@ background: linear-gradient(
   left: 0;
   top: 0;
   width: 100%;
-  height: 100%;
+  height: 100vh;
   display: flex;
   align-items: center;
   justify-content: center;
   text-align: center;
   font-size: xx-large;
+  background: rgb(247, 196, 152);
   font-family: sans-serif;
+  z-index: 28;
 }
 #loading>div>div {
   padding: 2px;
+  border-radius: 20px;
 }
 .progress {
   width: 50vw;
-  border: 1px solid black;
+  border: 1px solid rgba(255, 255, 255, 0.89);
+  border-radius: 20px;
+  overflow: hidden;
 }
 #progressbar {
   width: 0;
   transition: width ease-out .5s;
   height: 1em;
-  background-color: #888;
+  background-color: rgb(58, 24, 0);
+  border-radius: 20px;
   background-image: linear-gradient(
     -45deg, 
-    rgba(255, 255, 255, .5) 25%, 
+    rgba(47, 76, 110, 0.6) 25%, 
     transparent 25%, 
     transparent 50%, 
-    rgba(255, 255, 255, .5) 50%, 
-    rgba(255, 255, 255, .5) 75%, 
+    rgba(47, 76, 110, 0.6) 50%, 
+    rgba(47, 76, 110, 0.6) 75%, 
     transparent 75%, 
     transparent
   );

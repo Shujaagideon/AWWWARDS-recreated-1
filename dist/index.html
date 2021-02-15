@@ -11,10 +11,19 @@
 <body>
 
     <section class="points">
-        <div class="ui">
+        <div class="points-ui">
             <div class="score-layout">
-                <div class="score-text" id="score-text">
-                    00000
+               <div>
+                    score:
+                    <div class="score-text" id="score-text">
+                        00000
+                    </div>
+               </div>
+                <div>
+                    cash:
+                    <div class="cash-text" id="cash-text">
+                        00
+                    </div>
                 </div>
             </div>
         </div>
@@ -275,6 +284,12 @@
             </defs>
         </svg>
     </main>
+    <div id="loading">
+    <div>
+      <div>...loading...</div>
+      <div class="progress"><div id="progressbar"></div></div>
+    </div>
+  </div>
     <script src="/ui.9b6878c0.js"></script>
 </body>
 

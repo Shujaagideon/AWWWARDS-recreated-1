@@ -14,5 +14,6 @@
     "gsap": "^3.5.1",
     "react-three-fiber": "^5.3.11",
     "three": "^0.124.0"
-  }
+  },
+  "repository":"https://github.com/Shujaagideon/webgl-test-game"
 }
