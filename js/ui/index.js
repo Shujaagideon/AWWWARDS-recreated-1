@@ -2,6 +2,7 @@ const { Expo } = require("gsap");
 const { default: gsap } = require("gsap/gsap-core");
 const { data } = require("../data/data");
 const { default: ThreeTemplate } = require("../game");
+const { default: Garage_ } = require("./garage");
 
 class UI {
     constructor() {
@@ -13,11 +14,11 @@ class UI {
         this.menuOpen = false;
         this.isFullscreen = false;
         this.chosenStage = data.stage.desert;
-        this.chosenVehicle = 'custom';
+        this.chosenVehicle = data.vehicle.aventador;
         this.data = data;
         this._Init();
         this.StartGame();
-        let currentClick;
+        this.currentClick = null;
         this.url = `${window.location.protocol}//${window.location.hostname}`;
         if (window.location.port) {
             this.url = `${this.url}:${window.location.port}`
@@ -34,9 +35,9 @@ class UI {
                 this.links.forEach(link => {
                     link.classList.remove('active');
                 })
-                currentClick = link;
                 link.classList.add('active');
-                this._FetchHtml(e.target.id);
+                this.currentClick !== link && this._FetchHtml(e.target.id);
+                this.currentClick = link;
             });
         })
         this.hamburger.addEventListener('click', () => {
@@ -78,7 +79,11 @@ class UI {
             let cont = content.querySelector('.hapo');
             this.stages = [...content.querySelectorAll('.stage-image')];
             this.vehicles = [...content.querySelectorAll('.vehicle-specific')];
-            this.stageSpecs = content.querySelectorAll('.specs p');
+            this.stageSpecs = [...content.querySelectorAll('.specs p')];
+            this.portal = content.getElementById('portal');
+            this.elem = content.querySelector('.cov');
+            this.leftGarageBtn = content.querySelector('.left-btn');
+            this.rightGarageBtn = content.querySelector('.right-btn');
             this.PostFetch();
 
             gsap.to('.hapo', {
@@ -108,29 +113,44 @@ class UI {
             stage.addEventListener('click', e => {
                 this.chosenStage = this.data.stage[`${e.target.id}`];
                 let stageImg = e.target.children[0].currentSrc;
-                currentClick.children[0].src = stageImg;
+                this.currentClick.children[0].src = stageImg;
             });
         })
         this.vehicles.forEach(stage => {
             stage.addEventListener('click', e => {
                 this.chosenVehicle = this.data.vehicle[`${e.target.id}`];
-                let stageImg = e.target.src;
+                console.log(e.target.id);
+                let stageImg = e.target.src || e.target.dataSrc;
                 if (!stageImg) return;
-                currentClick.children[0].src = stageImg;
+                this.currentClick.children[0].src = stageImg;
+                console.log(e.target)
             });
         })
-        // this.stageSpecs[0].innerHTML = data.stage.city.config.highScore || 0;
-        // this.stageSpecs[1].innerHTML = data.stage.city.config.highScore || 0;
-        // this.stageSpecs[2].innerHTML = data.stage.winter.config.highScore || 0;
-        // this.stageSpecs[3].innerHTML = data.stage.winter.config.highScore || 0;
-        // this.stageSpecs[4].innerHTML = data.stage.desert.config.highScore || 0;
-        // this.stageSpecs[5].innerHTML = data.stage.desert.config.highScore || 0;
+        this.stageSpecs.forEach(stage =>{
+            this.stageSpecs[0].innerHTML = data.stage.city.config.highScore;
+            this.stageSpecs[1].innerHTML = data.stage.city.config.highScore;
+            this.stageSpecs[2].innerHTML = data.stage.winter.config.highScore;
+            this.stageSpecs[3].innerHTML = data.stage.winter.config.highScore;
+            this.stageSpecs[4].innerHTML = data.stage.desert.config.highScore;
+            this.stageSpecs[5].innerHTML = data.stage.desert.config.highScore;
+        });
+        if(this.portal){
+            new Garage_(this.portal, this.elem, this.leftGarageBtn, this.rightGarageBtn);
+        }
         // console.log(data.stage.desert.config.highScore)
     }
     StartGame() {
         document.getElementById('play').onclick = () => {
             document.getElementById('game-ui').style.display = 'none';
-            new ThreeTemplate(this.chosenStage, this.chosenVehicle, true, this.progressbarElem, this.loadingElem);
+            if(data.gamePaused){
+                document.getElementById('game-ui').style.display = 'none';
+                document.querySelector('.game-over').style.display = 'none';
+                data.gameOver = false;
+                data.gameStarted = true;
+            }else{
+                data.gameStarted = true;
+                new ThreeTemplate(this.chosenStage, this.chosenVehicle, this.progressbarElem, this.loadingElem);
+            }
         };
 
     }

@@ -13,12 +13,12 @@
     <section class="points">
         <div class="points-ui">
             <div class="score-layout">
-               <div>
+                <div>
                     score:
                     <div class="score-text" id="score-text">
                         00000
                     </div>
-               </div>
+                </div>
                 <div>
                     cash:
                     <div class="cash-text" id="cash-text">
@@ -32,8 +32,13 @@
         <div class="center">
             <h3>Tough ride</h3>
             <div class="again">
-                <p>try again</p>
+               <!-- <div class="play-btn" id="home">
+                 <h4>Home</h4>
+               </div> -->
+            <div class="play-btn" id="retry">
+                <h4>Retry</h4>
             </div>
+        </div>
         </div>
     </div>
     <main class="game-ui ui" id="game-ui">
@@ -99,6 +104,7 @@
                         <h3>fullscreen</h3>
                     </div>
                     <div class="music">
+                        <audio src="./track.mp3" loop='true'></audio>
                         <?xml version="1.0" encoding="iso-8859-1"?>
                         <svg version="1.1" height="30px" width="30px" id="Capa_1" xmlns="http://www.w3.org/2000/svg"
                             xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" viewBox="0 0 477.867 477.867"
@@ -174,10 +180,10 @@
             </section>
             <section class="item-desc">
                 <div class="intro hapo">
-                    <!-- <h1>
+                    <h1>
                         Howdy Fellas
-                    </h1> -->
-                    
+                    </h1>
+
                 </div>
             </section>
         </div>
@@ -189,34 +195,35 @@
         <div class="play-btn" id="play">
             <h4>play</h4>
         </div>
-        <svg class="bgsvg" width='300px' height=300px viewBox="0 0 1463 956" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <svg class="bgsvg" width='300px' height=300px viewBox="0 0 1463 956" fill="none"
+            xmlns="http://www.w3.org/2000/svg">
             <g filter="url(#filter0_d)">
                 <path d="M222.599 88.6753L398 8.29997L573.401 88.6753V248.325L398 328.7L222.599 248.325V88.6753Z"
                     stroke="#994E0A" stroke-width="6" />
             </g>
             <g filter="url(#filter1_d)">
-                <path d="M634.599 677.675L810 597.3L985.401 677.675V837.325L810 917.7L634.599 837.325V677.675Z" stroke="#994E0A"
-                    stroke-width="6" />
+                <path d="M634.599 677.675L810 597.3L985.401 677.675V837.325L810 917.7L634.599 837.325V677.675Z"
+                    stroke="#994E0A" stroke-width="6" />
             </g>
             <g filter="url(#filter2_d)">
                 <path d="M619 88.6753L794.401 8.29997L969.802 88.6753V248.325L794.401 328.7L619 248.325V88.6753Z"
                     stroke="#994E0A" stroke-width="6" />
             </g>
             <g filter="url(#filter3_d)">
-                <path d="M829 382.675L1004.4 302.3L1179.8 382.675V542.325L1004.4 622.7L829 542.325V382.675Z" stroke="#994E0A"
-                    stroke-width="6" />
+                <path d="M829 382.675L1004.4 302.3L1179.8 382.675V542.325L1004.4 622.7L829 542.325V382.675Z"
+                    stroke="#994E0A" stroke-width="6" />
             </g>
             <g filter="url(#filter4_d)">
-                <path d="M234.599 677.675L410 597.3L585.401 677.675V837.325L410 917.7L234.599 837.325V677.675Z" stroke="#994E0A"
-                    stroke-width="6" />
+                <path d="M234.599 677.675L410 597.3L585.401 677.675V837.325L410 917.7L234.599 837.325V677.675Z"
+                    stroke="#994E0A" stroke-width="6" />
             </g>
             <g filter="url(#filter5_d)">
-                <path d="M16.5988 382.675L192 302.3L367.401 382.675V542.325L192 622.7L16.5988 542.325V382.675Z" stroke="#994E0A"
-                    stroke-width="6" />
+                <path d="M16.5988 382.675L192 302.3L367.401 382.675V542.325L192 622.7L16.5988 542.325V382.675Z"
+                    stroke="#994E0A" stroke-width="6" />
             </g>
             <g filter="url(#filter6_d)">
-                <path d="M428.599 382.675L604 302.3L779.401 382.675V542.325L604 622.7L428.599 542.325V382.675Z" stroke="#994E0A"
-                    stroke-width="6" />
+                <path d="M428.599 382.675L604 302.3L779.401 382.675V542.325L604 622.7L428.599 542.325V382.675Z"
+                    stroke="#994E0A" stroke-width="6" />
             </g>
             <g filter="url(#filter7_d)">
                 <path
@@ -308,12 +315,15 @@
         </svg>
     </main>
     <div id="loading">
-    <div>
-      <div>...loading...</div>
-      <div class="progress"><div id="progressbar"></div></div>
+        <div>
+            <div>...loading...</div>
+            <div class="progress">
+                <div id="progressbar"></div>
+            </div>
+        </div>
     </div>
-  </div>
     <script src="./js/ui/index.js"></script>
+    <script src="./js/ui/garage.js"></script>
 </body>
 
 </html>

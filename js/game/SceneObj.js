@@ -81,7 +81,20 @@ export const sceneObj = (() => {
 
             const scoreText = Math.round(this.score_).toLocaleString(
                 'en-US', { minimumIntegerDigits: 5, useGrouping: false });
-                this.stage.config.highScore = this.score_;
+                switch (this.stage.name) {
+                    case 'city':
+                        window.localStorage.setItem('city-poin', JSON.stringify(Math.round(this.score_)));
+                        break;
+                    case 'winter':
+                        window.localStorage.setItem('winter-poin', JSON.stringify(Math.round(this.score_)));
+                        break;
+                    case 'desert':
+                        window.localStorage.setItem('desert-poin', JSON.stringify(Math.round(this.score_)));
+                        break;
+                
+                    default:
+                        break;
+                }
 
             if (scoreText == this.scoreText_) {
                 return;

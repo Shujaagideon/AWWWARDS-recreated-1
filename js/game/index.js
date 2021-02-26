@@ -1,8 +1,15 @@
 import * as THREE from 'three';
 import { ReinhardToneMapping } from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
+import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer';
+import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass';
+import { SavePass } from 'three/examples/jsm/postprocessing/SavePass';
+import { BlendShader } from 'three/examples/jsm/shaders/BlendShader';
+import { CopyShader } from 'three/examples/jsm/shaders/CopyShader';
+import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass';
 import { key_press } from './keyPress'
 import { sceneObj } from './SceneObj';
+import { data } from '../data/data';
 const _VS = `
 varying vec3 vWorldPosition;
 void main() {
@@ -23,8 +30,9 @@ void main() {
   gl_FragColor = vec4( mix( bottomColor, topColor, max( pow( max( h , 0.0), exponent ), 0.0 ) ), 1.0 );
 }`;
 export default class ThreeTemplate {
-    constructor(stage, vehicle, start, bar, loading) {
+    constructor(stage, vehicle, bar, loading) {
         this.stage = stage;
+        this.vehicle = vehicle;
         this.scene = null;
         this.camera = null;
         this.renderer = null;
@@ -39,7 +47,7 @@ export default class ThreeTemplate {
             this.progressbarElem.style.width = `${itemsLoaded / itemsTotal * 100 | 0}%`;
         };
         this.LoadManager.onLoad = (() => {
-            this._gameStarted = start;
+            this._gameStarted = data.gameStarted;
             this.loadingElem.style.display = 'none';
         })
 
@@ -60,7 +68,8 @@ export default class ThreeTemplate {
         this.camera.position.y = 3;
         this.camera.lookAt(new THREE.Vector3(0., 0., 0.));
         this.miss = new sceneObj._MissThem(this.scene, this.loader, this.stage);
-        this.keys = new key_press._KeyPress(this.cube, this.miss, this.scene, this.loader);
+        this.keys = new key_press._KeyPress(this.vehicle, this.miss, this.scene, this.loader);
+        this.Cam = new key_press.Camera_({ camera: this.camera, target: this.keys.carMesh });
         this.background_ = new sceneObj._BackgroundCloud({ scene: this.scene, loader: this.loader, stage: this.stage });
 
 
@@ -72,7 +81,7 @@ export default class ThreeTemplate {
             color: this.stage.color.color || 'rgb(154, 90, 60)',
             map: this.texture,
             bumpMap: this.texture,
-            bumpScale: 2000, 
+            bumpScale: 2000,
         });
         this.plane = new THREE.Mesh(this.geometry2, this.material2);
         this.plane.rotation.x = -0.5 * Math.PI;
@@ -96,7 +105,7 @@ export default class ThreeTemplate {
         });
 
         //lights
-         this.light = new THREE.DirectionalLight(this.stage.color.DirectionalLight, this.stage.config.ambiIntense);
+        this.light = new THREE.DirectionalLight(this.stage.color.DirectionalLight, this.stage.config.ambiIntense);
         this.light.position.set(60, 100, 10);
         this.light.target.position.set(40, 0, 0);
         this.light.castShadow = true;
@@ -130,7 +139,7 @@ export default class ThreeTemplate {
         this.scene.add(this.light3);
 
         this.scene.background = new THREE.Color(this.stage.color.background);
-        this.scene.fog = new THREE.Fog(this.stage.color.fog,0.02, this.stage.config.fog,);
+        this.scene.fog = new THREE.Fog(this.stage.color.fog, 0.02, this.stage.config.fog,);
 
 
         //scene
@@ -149,13 +158,52 @@ export default class ThreeTemplate {
         this.renderer.toneMapping = ReinhardToneMapping;
         this.renderer.toneMappingExposure = 2.3;
         document.body.appendChild(this.renderer.domElement);
-        this.gameOver = false;
+
+
+        // Post-processing inits
+        this.composer = new EffectComposer(this.renderer);
+
+        // render pass
+        this.renderPass = new RenderPass(this.scene, this.camera);
+
+        this.renderTargetParameters = {
+            minFilter: THREE.LinearFilter,
+            magFilter: THREE.LinearFilter,
+            stencilBuffer: false
+        };
+
+        // save pass
+        this.savePass = new SavePass(
+            new THREE.WebGLRenderTarget(
+                window.innerWidth,
+                window.innerHeight,
+                this.renderTargetParameters
+            )
+        );
+
+        // blend pass
+        this.blendPass = new ShaderPass(BlendShader, "tDiffuse1");
+        this.blendPass.uniforms["tDiffuse2"].value = this.savePass.renderTarget.texture;
+        this.blendPass.uniforms["mixRatio"].value = 0.05;
+
+        // output pass
+        this.outputPass = new ShaderPass(CopyShader);
+        this.outputPass.renderToScreen = true;
+
+        // adding passes to composer
+        this.composer.addPass(this.renderPass);
+        this.composer.addPass(this.blendPass);
+        this.composer.addPass(this.savePass);
+        this.composer.addPass(this.outputPass);
+
+        this.gameOver = data.gameOver;
         this.prevAnimFrame = null;
         this._RAF();
         this._UpdateOnResize();
     }
     _RAF = () => {
         requestAnimationFrame((t) => {
+            this.gameOver = data.gameOver;
             if (this.prevAnimFrame === null) {
                 this.prevAnimFrame = t;
             }
@@ -164,23 +212,24 @@ export default class ThreeTemplate {
             this.StepOver(this.myTime);
             this.camera.aspect = window.innerWidth / window.innerHeight;
             this.camera.updateProjectionMatrix();
-            this.renderer.render(this.scene, this.camera);
+            // this.renderer.render(this.scene, this.camera);
+            this.composer.render();
             this._RAF();
             this.prevAnimFrame = t;
             this._TryAgain();
-            this.sun += 0.0015;
-            this.light.intensity = Math.max( -0.8, Math.sin(this.sun) * 1);
-            this.light1.intensity = Math.max( -0.6, Math.sin(this.sun) * 1);
+            this.sun += 0.0025;
+            this.light.intensity = Math.max(-0.8, Math.sin(this.sun) * 1);
+            this.light1.intensity = Math.max(-0.6, Math.sin(this.sun) * 1);
             this.light2.intensity = Math.max(0.5, Math.sin(this.sun) * 0.8);
-            this.light3.intensity = Math.max( -0.8, Math.sin(this.sun) * 1);
+            this.light3.intensity = Math.max(-0.8, Math.sin(this.sun) * 1);
             // light position
-            this.light.position.x = -100 + (Math.cos(this.sun)* 200);
-            this.light3.position.x = -100 + (Math.cos(this.sun)* 200);
-            
+            this.light.position.x = -100 + (Math.cos(this.sun) * 200);
+            this.light3.position.x = -100 + (Math.cos(this.sun) * 200);
+
 
             // light pos y
-            this.light.position.y =  20 + (Math.sin(this.sun) * 30);
-            this.light3.position.y = 20+ (Math.sin(this.sun)* 30);
+            this.light.position.y = 20 + (Math.sin(this.sun) * 30);
+            this.light3.position.y = 20 + (Math.sin(this.sun) * 30);
             if (this.light1.intensity > 0.5) {
                 this.uniforms.topColor.value.r = Math.abs(Math.sin(this.sun)) * this.uniforms.topColor.value.r
                 this.uniforms.bottomColor.value.r = Math.abs(math.sin(this.sun)) * this.uniforms.bottomColor.value.r
@@ -188,34 +237,48 @@ export default class ThreeTemplate {
                 this.uniforms.bottomColor.value.g = Math.abs(math.sin(this.sun)) * this.uniforms.bottomColor.value.g
                 this.uniforms.topColor.value.b = Math.abs(Math.sin(this.sun)) * this.uniforms.topColor.value.b
                 this.uniforms.bottomColor.value.b = Math.abs(math.sin(this.sun)) * this.uniforms.bottomColor.value.b
-            } else if (this.light1.intensity > 0){
+            } else if (this.light1.intensity > 0) {
                 this.uniforms.topColor.value = new THREE.Color(this.stage.color.sky.top)
                 this.uniforms.bottomColor.value = new THREE.Color(this.stage.color.sky.bottom)
-            } else{
+            } else {
                 this.uniforms.topColor.value = new THREE.Color('rgb(50, 50, 80)')
                 this.uniforms.bottomColor.value = new THREE.Color('rgb(10, 10, 40)')
             }
         });
     }
     StepOver = (time) => {
-        if (this.gameOver || !this._gameStarted) {
+        if (data.gameOver || !this._gameStarted) {
             return;
         }
         this.keys._CharacterMovement(time);
+        this.Cam.Update(time);
         this.miss.Update(time * 10);
         this.background_.Update(time);
 
-        if (this.keys.gameOver && !this.gameOver) {
-            this.gameOver = true;
+        if (data.gameOver) {
+            data.gameStarted = false;
+            // this.gameStarted = false;
             document.querySelector('.game-over').style.display = 'flex';
         }
     }
     _TryAgain = () => {
         let btn;
-        document.querySelector('.again').addEventListener('click', () => {
+        document.querySelector('.again').addEventListener('click', e => {
+            this.miss.score_ = 0;
+            this.miss.speed_ = 20;
+            this.miss.acceleration = -0.02;
+            // this.miss.tElapse = 0;
+            this.sun = 0;
+            // console.log(e.target);
+            // if (!this.keys.gameOver && e.target.id === 'home') {
+            //     document.getElementById('game-ui').style.display = 'flex';
+            //     // this.loadingElem.style.display = 'flex';
+            // }
+            if (!this.keys.gameOver && e.target.id === 'retry') {
+                data.gameOver = false;
+                this._gameStarted = true;
+            }
             document.querySelector('.game-over').style.display = 'none';
-            // this.gameOver = false;
-            this.keys.gameOver = false;
         })
     }
     _UpdateOnResize = () => {

@@ -50,13 +50,9 @@ export const data = {
                 ambiIntense: 1,
                 bgRange: [20, 100],
                 surfaceTexture: image1,
-                set highScore(value){
-                    let current = 0;
-                    if(value > current){
-                        current = value
-                    }
-                    current;
-                },
+                highScore: window.localStorage.getItem("city-poin")
+                    ? JSON.parse(localStorage.getItem("city-poin"))
+                    : 0,
             }
         },
         winter: {
@@ -103,13 +99,9 @@ export const data = {
                 speed: 0.009,
                 bgRange: [30, 400],
                 surfaceTexture: image2,
-                set highScore(value) {
-                    let current = 0;
-                    if (value > current) {
-                        current = value
-                    }
-                    current;
-                },
+                highScore: window.localStorage.getItem("winter-poin")
+                    ? JSON.parse(localStorage.getItem("winter-poin"))
+                    : 0,
             }
         },
         desert: {
@@ -142,17 +134,18 @@ export const data = {
                 ambiIntense: 0.8,
                 bgRange: [30, 400],
                 surfaceTexture: image3,
-                set highScore(value) {
-                    let current = 0;
-                    if (value > current) {
-                        current = value
-                    }
-                    current;
-                },
+                highScore: window.localStorage.getItem("desert-poin")
+                ? JSON.parse(localStorage.getItem("desert-poin"))
+                : 0,
             }
         }
     },
     vehicle: {
-
-    }
+        aventador: 'aventador.gltf',
+        urus: 'urus.gltf',
+        terzo: 'terzo.gltf',
+    },
+    gameOver: false,
+    gamePaused: false,
+    gameStarted: false,
 }

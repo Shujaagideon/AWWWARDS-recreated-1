@@ -13,12 +13,12 @@
     <section class="points">
         <div class="points-ui">
             <div class="score-layout">
-               <div>
+                <div>
                     score:
                     <div class="score-text" id="score-text">
                         00000
                     </div>
-               </div>
+                </div>
                 <div>
                     cash:
                     <div class="cash-text" id="cash-text">
@@ -32,8 +32,13 @@
         <div class="center">
             <h3>Tough ride</h3>
             <div class="again">
-                <p>try again</p>
+               <!-- <div class="play-btn" id="home">
+                 <h4>Home</h4>
+               </div> -->
+            <div class="play-btn" id="retry">
+                <h4>Retry</h4>
             </div>
+        </div>
         </div>
     </div>
     <main class="game-ui ui" id="game-ui">
@@ -95,6 +100,7 @@
                         <h3>fullscreen</h3>
                     </div>
                     <div class="music">
+                        <audio src="/track.716701d0.mp3" loop="true"></audio>
                         
                         <svg version="1.1" height="30px" width="30px" id="Capa_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" viewBox="0 0 477.867 477.867" style="enable-background:new 0 0 477.867 477.867;" xml:space="preserve">
                             <g>
@@ -168,10 +174,10 @@
             </section>
             <section class="item-desc">
                 <div class="intro hapo">
-                    <!-- <h1>
+                    <h1>
                         Howdy Fellas
-                    </h1> -->
-                    
+                    </h1>
+
                 </div>
             </section>
         </div>
@@ -285,12 +291,15 @@
         </svg>
     </main>
     <div id="loading">
-    <div>
-      <div>...loading...</div>
-      <div class="progress"><div id="progressbar"></div></div>
+        <div>
+            <div>...loading...</div>
+            <div class="progress">
+                <div id="progressbar"></div>
+            </div>
+        </div>
     </div>
-  </div>
     <script src="/ui.9b6878c0.js"></script>
+    <script src="/garage.159ece64.js"></script>
 </body>
 
 </html>
